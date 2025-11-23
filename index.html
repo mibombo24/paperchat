@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TapChatter - Connect with Friends</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Login/Register Screen -->
+    <div id="auth-screen" class="screen active">
+        <div class="auth-container">
+            <div class="auth-header">
+                <h1>🎮 TapChatter</h1>
+                <p>Your place to connect and chat</p>
+            </div>
+            
+            <div class="auth-tabs">
+                <button class="tab-btn active" onclick="switchAuthTab('login')">Login</button>
+                <button class="tab-btn" onclick="switchAuthTab('register')">Register</button>
+            </div>
+
+            <!-- Login Form -->
+            <div id="login-form" class="auth-form active">
+                <input type="text" id="login-username" placeholder="Username#1234" class="input-field">
+                <input type="password" id="login-password" placeholder="Password" class="input-field">
+                <button onclick="login()" class="btn btn-primary">Login</button>
+                <div id="login-error" class="error-msg"></div>
+            </div>
+
+            <!-- Register Form -->
+            <div id="register-form" class="auth-form">
+                <input type="text" id="register-username" placeholder="Username (letters, numbers, _)" class="input-field">
+                <input type="password" id="register-password" placeholder="Password" class="input-field">
+                <input type="password" id="register-confirm" placeholder="Confirm Password" class="input-field">
+                <button onclick="register()" class="btn btn-primary">Create Account</button>
+                <div id="register-error" class="error-msg"></div>
+                <div id="register-success" class="success-msg"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App Screen -->
+    <div id="app-screen" class="screen">
+        <div class="app-container">
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <div class="server-list">
+                    <div class="server-icon home-icon active" onclick="showHome()" title="Home">
+                        <span>🏠</span>
+                    </div>
+                    <div class="server-divider"></div>
+                    <div id="server-icons-container"></div>
+                    <div class="server-icon add-server" onclick="showCreateServerModal()" title="Add Server">
+                        <span>+</span>
+                    </div>
+                </div>
+                
+                <div class="channel-list">
+                    <div class="channel-list-header">
+                        <h3 id="current-server-name">Direct Messages</h3>
+                    </div>
+                    
+                    <!-- DM List -->
+                    <div id="dm-list" class="dm-section">
+                        <div class="dm-header">
+                            <span>Direct Messages</span>
+                            <button onclick="showAddFriendModal()" class="btn-icon" title="Add Friend">+</button>
+                        </div>
+                        <div id="friends-list"></div>
+                    </div>
+
+                    <!-- Server Channels -->
+                    <div id="server-channels" class="channels-section" style="display: none;">
+                        <div class="channel-category">
+                            <span class="category-label">TEXT CHANNELS</span>
+                            <button onclick="showCreateChannelModal('text')" class="btn-icon" title="Add Channel">+</button>
+                        </div>
+                        <div id="text-channels-list"></div>
+                        
+                        <div class="channel-category">
+                            <span class="category-label">VOICE CHANNELS</span>
+                            <button onclick="showCreateChannelModal('voice')" class="btn-icon" title="Add Channel">+</button>
+                        </div>
+                        <div id="voice-channels-list"></div>
+                    </div>
+                </div>
+
+                <div class="user-bar">
+                    <div class="user-info">
+                        <div class="user-avatar" id="user-avatar">👤</div>
+                        <div class="user-details">
+                            <div class="username" id="current-username">User</div>
+                            <div class="user-status">
+                                <select id="status-select" onchange="updateStatus()" class="status-dropdown">
+                                    <option value="online">🟢 Online</option>
+                                    <option value="idle">🟡 Idle</option>
+                                    <option value="dnd">🔴 Do Not Disturb</option>
+                                    <option value="invisible">⚫ Invisible</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="user-actions">
+                        <button onclick="showSettingsModal()" class="btn-icon" title="Settings">⚙️</button>
+                        <button onclick="logout()" class="btn-icon" title="Logout">🚪</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Chat Area -->
+            <div class="main-content">
+                <div class="chat-header">
+                    <h2 id="chat-title"># general</h2>
+                    <div class="chat-actions">
+                        <button onclick="showCallOptions()" class="btn-icon" title="Start Call">📞</button>
+                        <button onclick="showVideoCall()" class="btn-icon" title="Video Call">📹</button>
+                        <button onclick="showScreenShare()" class="btn-icon" title="Screen Share">🖥️</button>
+                    </div>
+                </div>
+
+                <div class="chat-messages" id="chat-messages">
+                    <div class="welcome-message">
+                        <h2>Welcome to TapChatter!</h2>
+                        <p>Add friends to start chatting or create a server to build your community.</p>
+                    </div>
+                </div>
+
+                <div class="chat-input-container">
+                    <button onclick="showFileUpload()" class="btn-icon" title="Attach File">📎</button>
+                    <input type="file" id="file-input" style="display: none;" onchange="handleFileSelect(event)" accept="image/*,video/*">
+                    <input type="text" id="message-input" placeholder="Message..." class="message-input" onkeypress="handleMessageKeyPress(event)">
+                    <button onclick="showEmojiPicker()" class="btn-icon" title="Emoji">😊</button>
+                    <button onclick="sendMessage()" class="btn-icon btn-send" title="Send">➤</button>
+                </div>
+            </div>
+
+            <!-- Friends/Members Panel -->
+            <div class="members-panel" id="members-panel">
+                <div class="members-header">
+                    <h3>Friends</h3>
+                </div>
+                <div id="members-list" class="members-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <!-- Add Friend Modal -->
+    <div id="add-friend-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add Friend</h3>
+                <span class="close" onclick="closeModal('add-friend-modal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Enter username with tag (e.g., Username#1234)</p>
+                <input type="text" id="friend-username-input" placeholder="Username#1234" class="input-field">
+                <div id="add-friend-result"></div>
+            </div>
+            <div class="modal-footer">
+                <button onclick="sendFriendRequest()" class="btn btn-primary">Send Friend Request</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Server Modal -->
+    <div id="create-server-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Create Server</h3>
+                <span class="close" onclick="closeModal('create-server-modal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="server-name-input" placeholder="Server Name" class="input-field">
+                <label>Server Icon (emoji)</label>
+                <input type="text" id="server-icon-input" placeholder="🎮" maxlength="2" class="input-field">
+            </div>
+            <div class="modal-footer">
+                <button onclick="createServer()" class="btn btn-primary">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Channel Modal -->
+    <div id="create-channel-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Create Channel</h3>
+                <span class="close" onclick="closeModal('create-channel-modal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="channel-name-input" placeholder="channel-name" class="input-field">
+                <input type="hidden" id="channel-type-input">
+            </div>
+            <div class="modal-footer">
+                <button onclick="createChannel()" class="btn btn-primary">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Settings</h3>
+                <span class="close" onclick="closeModal('settings-modal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <h4>Change Avatar</h4>
+                <input type="text" id="avatar-input" placeholder="Enter emoji" maxlength="2" class="input-field">
+                <button onclick="updateAvatar()" class="btn btn-secondary">Update Avatar</button>
+                
+                <h4>Custom Status</h4>
+                <input type="text" id="custom-status-input" placeholder="What's on your mind?" class="input-field">
+                <button onclick="updateCustomStatus()" class="btn btn-secondary">Update Status</button>
+
+                <h4>Notifications</h4>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="notif-messages" checked>
+                    <span>Message notifications</span>
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="notif-mentions" checked>
+                    <span>Mention notifications</span>
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="notif-friend-requests" checked>
+                    <span>Friend request notifications</span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <!-- Friend Requests Notification -->
+    <div id="friend-requests-container" class="friend-requests-popup" style="display: none;">
+        <h4>Friend Requests</h4>
+        <div id="friend-requests-list"></div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
