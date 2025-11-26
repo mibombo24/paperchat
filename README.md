@@ -1,4 +1,4 @@
-# 🎮 TapChatter - Discord-like Social Platform
+# 📄 PaperChat - Discord-like Social Platform
 
 A feature-rich social platform inspired by Discord and Snapchat, built with vanilla HTML, CSS, and JavaScript.
 
@@ -152,7 +152,7 @@ All data is stored locally in your browser using LocalStorage:
 ## 🎯 Features Explained
 
 ### Username + Tag System
-Unlike phone-based systems, TapChatter uses Discord's username#tag format:
+Unlike phone-based systems, PaperChat uses Discord's username#tag format:
 - **Username**: Your chosen display name
 - **Tag**: A random 4-digit number (e.g., #1234)
 - **Combined**: Creates unique identifiers like `CoolUser#5678`
@@ -274,4 +274,4 @@ Inspired by:
 
 ---
 
-**Enjoy using TapChatter! Connect with friends and build your communities! 🎮💬**
+**Enjoy using PaperChat! Connect with friends and build your communities! 📄💬**

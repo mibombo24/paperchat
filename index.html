@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TapChatter - Connect with Friends</title>
+    <title>PaperChat - Connect with Friends</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -11,7 +11,7 @@
     <div id="auth-screen" class="screen active">
         <div class="auth-container">
             <div class="auth-header">
-                <h1>🎮 TapChatter</h1>
+                <h1>📄 PaperChat</h1>
                 <p>Your place to connect and chat</p>
             </div>
             
@@ -87,6 +87,7 @@
                 </div>
 
                 <div class="user-bar">
+                    <div class="user-banner" id="user-banner"></div>
                     <div class="user-info">
                         <div class="user-avatar" id="user-avatar">👤</div>
                         <div class="user-details">
@@ -108,6 +109,9 @@
                 </div>
             </div>
 
+            <!-- Resize Handle -->
+            <div class="resize-handle resize-handle-sidebar" id="resize-sidebar"></div>
+
             <!-- Main Chat Area -->
             <div class="main-content">
                 <div class="chat-header">
@@ -121,7 +125,7 @@
 
                 <div class="chat-messages" id="chat-messages">
                     <div class="welcome-message">
-                        <h2>Welcome to TapChatter!</h2>
+b                         <h2>Welcome to PaperChat!</h2>
                         <p>Add friends to start chatting or create a server to build your community.</p>
                     </div>
                 </div>
@@ -134,6 +138,9 @@
                     <button onclick="sendMessage()" class="btn-icon btn-send" title="Send">➤</button>
                 </div>
             </div>
+
+            <!-- Resize Handle -->
+            <div class="resize-handle resize-handle-members" id="resize-members"></div>
 
             <!-- Friends/Members Panel -->
             <div class="members-panel" id="members-panel">
@@ -207,6 +214,51 @@
                 <span class="close" onclick="closeModal('settings-modal')">&times;</span>
             </div>
             <div class="modal-body">
+                <h4>Profile Banner</h4>
+                <div class="banner-options">
+                    <div class="banner-grid" id="banner-grid">
+                        <div class="banner-option" data-banner="none" onclick="selectBanner('none')">
+                            <div class="banner-preview" style="background: #ccc;">None</div>
+                        </div>
+                        <div class="banner-option" data-banner="gradient1" onclick="selectBanner('gradient1')">
+                            <div class="banner-preview" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"></div>
+                        </div>
+                        <div class="banner-option" data-banner="gradient2" onclick="selectBanner('gradient2')">
+                            <div class="banner-preview" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);"></div>
+                        </div>
+                        <div class="banner-option" data-banner="gradient3" onclick="selectBanner('gradient3')">
+                            <div class="banner-preview" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);"></div>
+                        </div>
+                        <div class="banner-option" data-banner="gradient4" onclick="selectBanner('gradient4')">
+                            <div class="banner-preview" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);"></div>
+                        </div>
+                        <div class="banner-option" data-banner="gradient5" onclick="selectBanner('gradient5')">
+                            <div class="banner-preview" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);"></div>
+                        </div>
+                        <div class="banner-option" data-banner="gradient6" onclick="selectBanner('gradient6')">
+                            <div class="banner-preview" style="background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);"></div>
+                        </div>
+                        <div class="banner-option" data-banner="gradient7" onclick="selectBanner('gradient7')">
+                            <div class="banner-preview" style="background: linear-gradient(135deg, #ff6a00 0%, #ee0979 100%);"></div>
+                        </div>
+                        <div class="banner-option" data-banner="gradient8" onclick="selectBanner('gradient8')">
+                            <div class="banner-preview" style="background: linear-gradient(135deg, #2193b0 0%, #6dd5ed 100%);"></div>
+                        </div>
+                        <div class="banner-option banner-upload-option" onclick="triggerBannerUpload()" 
+                             ondrop="handleBannerDrop(event)" 
+                             ondragover="handleBannerDragOver(event)" 
+                             ondragleave="handleBannerDragLeave(event)">
+                            <div class="banner-preview" style="background: #fff; color: #2c1810; font-weight: 900; font-size: 24px;">📷+</div>
+                        </div>
+                    </div>
+                    <input type="file" id="banner-upload-input" accept="image/*,video/*" style="display: none;" onchange="uploadCustomBanner(event)">
+                    <div id="custom-banner-preview" class="custom-banner-preview" style="display: none;">
+                        <img id="custom-banner-img" src="" alt="Custom Banner" style="display: none;">
+                        <video id="custom-banner-video" src="" autoplay loop muted style="display: none; width: 100%; height: 100px; object-fit: cover; border: 2px solid #2c1810;"></video>
+                        <button onclick="removeCustomBanner()" class="btn btn-danger btn-small">Remove Custom</button>
+                    </div>
+                    <div class="banner-upload-hint" id="banner-upload-hint">Click 📷+ or drag & drop an image to upload custom banner</div>
+                </div>
                 <h4>Change Avatar</h4>
                 <input type="text" id="avatar-input" placeholder="Enter emoji" maxlength="2" class="input-field">
                 <button onclick="updateAvatar()" class="btn btn-secondary">Update Avatar</button>
@@ -228,6 +280,95 @@
                     <input type="checkbox" id="notif-friend-requests" checked>
                     <span>Friend request notifications</span>
                 </label>
+
+                <h4>Data Management</h4>
+                <button onclick="triggerExportData()" class="btn btn-secondary">Export All Data (JSON)</button>
+                <button onclick="triggerImportData()" class="btn btn-secondary">Import Data (JSON)</button>
+
+                <h4>PaperChat Pro <span class="pro-badge">⭐ PRO</span></h4>
+                <div class="pro-status-container" id="pro-status-container">
+                    <div class="pro-features-list">
+                        <p>🌊 <strong>Support The Ocean Cleanup & Get Pro:</strong></p>
+                        <p style="color: #4ecdc4; font-weight: 900; margin: 10px 0;">100% of your donation goes to cleaning our oceans!</p>
+                        <ul>
+                            <li>🎥 Video & Animated GIF Banners</li>
+                            <li>🎨 Custom Themes & Color Schemes</li>
+                            <li>🔒 Private Server Hosting</li>
+                            <li>📊 Enhanced Analytics Dashboard</li>
+                            <li>👑 Exclusive Pro Badge</li>
+                            <li>🚀 Priority Support</li>
+                        </ul>
+                    </div>
+                    <button onclick="showUpgradeModal()" class="btn btn-pro">🌊 Donate to Ocean Cleanup & Unlock Pro Features!</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pro Upgrade Modal -->
+    <div id="upgrade-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🌊 Support The Ocean Cleanup & Get Pro</h3>
+                <span class="close" onclick="closeModal('upgrade-modal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="pro-pricing-container">
+                    <div class="pro-hero">
+                        <h2>🌊 100% Goes to Cleaning Our Oceans!</h2>
+                        <p class="pro-tagline">Unlock PaperChat Pro features while supporting The Ocean Cleanup's mission to remove plastic from our oceans</p>
+                        <div class="ocean-cleanup-info">
+                            <p><strong>About The Ocean Cleanup:</strong></p>
+                            <p>A non-profit developing advanced technologies to rid the world's oceans of plastic. Your donation directly funds ocean cleanup operations.</p>
+                        </div>
+                    </div>
+
+                    <div class="pricing-options">
+                        <div class="pricing-card" data-plan="monthly">
+                            <div class="pricing-header">
+                                <h4>Monthly</h4>
+                                <div class="price">
+                                    <span class="currency">$</span>
+                                    <span class="amount">4.99</span>
+                                    <span class="period">/month</span>
+                                </div>
+                            </div>
+                            <button onclick="selectPlan('monthly', 4.99)" class="btn btn-pro-select">🌊 Donate Monthly</button>
+                        </div>
+
+                        <div class="pricing-card pricing-card-popular" data-plan="yearly">
+                            <div class="popular-badge">BEST VALUE</div>
+                            <div class="pricing-header">
+                                <h4>Yearly</h4>
+                                <div class="price">
+                                    <span class="currency">$</span>
+                                    <span class="amount">49.99</span>
+                                    <span class="period">/year</span>
+                                </div>
+                                <div class="savings">Save $10!</div>
+                            </div>
+                            <button onclick="selectPlan('yearly', 49.99)" class="btn btn-pro-select btn-pro-popular">🌊 Donate Yearly</button>
+                        </div>
+
+                        <div class="pricing-card" data-plan="lifetime">
+                            <div class="pricing-header">
+                                <h4>Lifetime</h4>
+                                <div class="price">
+                                    <span class="currency">$</span>
+                                    <span class="amount">99.99</span>
+                                    <span class="period">once</span>
+                                </div>
+                                <div class="savings">Best Deal Ever!</div>
+                            </div>
+                            <button onclick="selectPlan('lifetime', 99.99)" class="btn btn-pro-select">🌊 Donate Once</button>
+                        </div>
+                    </div>
+
+                    <div class="ocean-cleanup-footer">
+                        <p>🌊 After donating, you'll receive Pro features immediately</p>
+                        <p><small>You'll be redirected to The Ocean Cleanup's secure donation page</small></p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
