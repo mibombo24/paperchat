@@ -7,6 +7,14 @@ let users = [];
 let messages = {};
 let servers = [];
 let friendRequests = [];
+let voiceState = {
+    inCall: false,
+    channel: null,
+    server: null,
+    isMuted: false,
+    isDeafened: false,
+    participants: []
+};
 
 // Initialize app
 function init() {
@@ -366,10 +374,10 @@ function showApp() {
     
     // Set user info
     document.getElementById('current-username').textContent = `${currentUser.username}#${currentUser.tag}`;
-    document.getElementById('user-avatar').textContent = currentUser.avatar;
     document.getElementById('status-select').value = currentUser.status;
     
-    // Update banner display
+    // Update avatar and banner display
+    updateAvatarDisplay();
     updateBannerDisplay();
     
     // Load friends and servers
@@ -402,11 +410,23 @@ function loadFriendsList() {
                                friend.status === 'idle' ? 'idle' : 
                                friend.status === 'dnd' ? 'dnd' : 'offline';
             
-            friendEl.innerHTML = `
-                <div class="friend-avatar ${statusClass}">${friend.avatar}</div>
-                <div class="friend-name">${friend.username}</div>
-            `;
+            const avatarDiv = document.createElement('div');
+            avatarDiv.className = `friend-avatar ${statusClass}`;
             
+            if (friend.customAvatar) {
+                avatarDiv.style.backgroundImage = `url('${friend.customAvatar}')`;
+                avatarDiv.style.backgroundSize = 'cover';
+                avatarDiv.style.backgroundPosition = 'center';
+            } else {
+                avatarDiv.textContent = friend.avatar;
+            }
+            
+            const nameDiv = document.createElement('div');
+            nameDiv.className = 'friend-name';
+            nameDiv.textContent = friend.username;
+            
+            friendEl.appendChild(avatarDiv);
+            friendEl.appendChild(nameDiv);
             friendsList.appendChild(friendEl);
         }
     });
@@ -784,7 +804,17 @@ function loadServersList() {
         const serverEl = document.createElement('div');
         serverEl.className = 'server-icon';
         serverEl.title = server.name;
-        serverEl.innerHTML = `<span>${server.icon}</span>`;
+        
+        if (server.customIcon) {
+            // Use custom image
+            serverEl.style.backgroundImage = `url('${server.customIcon}')`;
+            serverEl.style.backgroundSize = 'cover';
+            serverEl.style.backgroundPosition = 'center';
+        } else {
+            // Use emoji
+            serverEl.innerHTML = `<span>${server.icon}</span>`;
+        }
+        
         serverEl.onclick = () => openServer(server);
         container.appendChild(serverEl);
     });
@@ -809,6 +839,7 @@ function createServer() {
         id: Date.now().toString(),
         name: name,
         icon: icon,
+        customIcon: customServerIconData || null, // Store custom icon image
         owner: currentUser.id,
         members: [currentUser.id],
         channels: [
@@ -827,6 +858,10 @@ function createServer() {
     };
     
     servers.push(server);
+    
+    // Reset custom icon data
+    customServerIconData = null;
+    document.getElementById('custom-server-icon-preview').style.display = 'none';
     
     // Add server to current user
     if (!currentUser.servers) {
@@ -910,9 +945,11 @@ function openChannel(channel) {
         document.getElementById('chat-title').textContent = `🔊 ${channel.name}`;
         document.getElementById('chat-messages').innerHTML = `
             <div class="welcome-message">
-                <h2>Voice Channel</h2>
-                <p>Click the call button to join the voice channel.</p>
-                <p>🎤 Voice calls are simulated in this demo.</p>
+                <h2>Voice Channel: ${channel.name}</h2>
+                <p>Join this voice channel to talk with others!</p>
+                <button onclick="joinVoiceChannel()" class="btn btn-primary" style="margin-top: 20px;">
+                    🎤 Join Voice Channel
+                </button>
             </div>
         `;
     }
@@ -1035,16 +1072,31 @@ function createMemberElement(user) {
                        user.status === 'idle' ? '#faa61a' :
                        user.status === 'dnd' ? '#ed4245' : '#747f8d';
     
-    memberEl.innerHTML = `
-        <div class="member-avatar" style="position: relative;">
-            ${user.avatar}
-            <div style="position: absolute; bottom: -2px; right: -2px; width: 10px; height: 10px; background: ${statusColor}; border: 2px solid #2f3136; border-radius: 50%;"></div>
-        </div>
-        <div class="member-info">
-            <div class="member-name">${user.username}</div>
-            ${user.customStatus ? `<div class="member-status">${user.customStatus}</div>` : ''}
-        </div>
+    const avatarDiv = document.createElement('div');
+    avatarDiv.className = 'member-avatar';
+    avatarDiv.style.position = 'relative';
+    
+    if (user.customAvatar) {
+        avatarDiv.style.backgroundImage = `url('${user.customAvatar}')`;
+        avatarDiv.style.backgroundSize = 'cover';
+        avatarDiv.style.backgroundPosition = 'center';
+    } else {
+        avatarDiv.textContent = user.avatar;
+    }
+    
+    const statusDot = document.createElement('div');
+    statusDot.style.cssText = `position: absolute; bottom: -2px; right: -2px; width: 10px; height: 10px; background: ${statusColor}; border: 2px solid #2f3136; border-radius: 50%;`;
+    avatarDiv.appendChild(statusDot);
+    
+    const infoDiv = document.createElement('div');
+    infoDiv.className = 'member-info';
+    infoDiv.innerHTML = `
+        <div class="member-name">${user.username}</div>
+        ${user.customStatus ? `<div class="member-status">${user.customStatus}</div>` : ''}
     `;
+    
+    memberEl.appendChild(avatarDiv);
+    memberEl.appendChild(infoDiv);
     
     return memberEl;
 }
@@ -1109,6 +1161,15 @@ function showSettingsModal() {
             : 'Click 📷+ or drag & drop an image to upload custom banner';
     }
     
+    // Show custom avatar preview if exists
+    if (currentUser.customAvatar) {
+        const previewImg = document.getElementById('custom-avatar-img');
+        previewImg.src = currentUser.customAvatar;
+        document.getElementById('custom-avatar-preview').style.display = 'block';
+    } else {
+        document.getElementById('custom-avatar-preview').style.display = 'none';
+    }
+    
     // Update Pro status display
     updateProStatus();
 }
@@ -1148,6 +1209,138 @@ function updateAvatar() {
         
         showNotification('Avatar updated!');
     }
+}
+
+// Custom Avatar Functions
+function triggerAvatarUpload() {
+    document.getElementById('avatar-upload-input').click();
+}
+
+function uploadCustomAvatar(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    if (!file.type.startsWith('image/')) {
+        showNotification('Please upload an image file');
+        return;
+    }
+    
+    if (file.size > 5 * 1024 * 1024) {
+        showNotification('Image must be smaller than 5MB');
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const imageData = e.target.result;
+        
+        currentUser.customAvatar = imageData;
+        currentUser.avatar = '🖼️'; // Indicator that custom avatar is in use
+        
+        const userIndex = users.findIndex(u => u.id === currentUser.id);
+        if (userIndex !== -1) {
+            users[userIndex].customAvatar = imageData;
+            users[userIndex].avatar = '🖼️';
+        }
+        
+        saveData();
+        localStorage.setItem('paperchat_current_user', JSON.stringify(currentUser));
+        
+        // Update displays
+        updateAvatarDisplay();
+        
+        // Show preview in settings
+        const previewImg = document.getElementById('custom-avatar-img');
+        previewImg.src = imageData;
+        document.getElementById('custom-avatar-preview').style.display = 'block';
+        
+        showNotification('Custom avatar uploaded!');
+    };
+    
+    reader.readAsDataURL(file);
+}
+
+function removeCustomAvatar() {
+    currentUser.customAvatar = null;
+    currentUser.avatar = '😊'; // Default emoji
+    
+    const userIndex = users.findIndex(u => u.id === currentUser.id);
+    if (userIndex !== -1) {
+        users[userIndex].customAvatar = null;
+        users[userIndex].avatar = '😊';
+    }
+    
+    saveData();
+    localStorage.setItem('paperchat_current_user', JSON.stringify(currentUser));
+    
+    updateAvatarDisplay();
+    document.getElementById('custom-avatar-preview').style.display = 'none';
+    
+    showNotification('Custom avatar removed');
+}
+
+function updateAvatarDisplay() {
+    const avatarEl = document.getElementById('user-avatar');
+    if (!avatarEl) return;
+    
+    if (currentUser.customAvatar) {
+        // Replace emoji with custom image
+        avatarEl.style.backgroundImage = `url('${currentUser.customAvatar}')`;
+        avatarEl.style.backgroundSize = 'cover';
+        avatarEl.style.backgroundPosition = 'center';
+        avatarEl.textContent = '';
+    } else {
+        // Use emoji
+        avatarEl.style.backgroundImage = 'none';
+        avatarEl.textContent = currentUser.avatar;
+    }
+    
+    loadMembersList();
+}
+
+// Custom Server Icon Functions
+let customServerIconData = null;
+
+function triggerServerIconUpload() {
+    document.getElementById('server-icon-upload-input').click();
+}
+
+function uploadCustomServerIcon(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    if (!file.type.startsWith('image/')) {
+        showNotification('Please upload an image file');
+        return;
+    }
+    
+    if (file.size > 5 * 1024 * 1024) {
+        showNotification('Image must be smaller than 5MB');
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        customServerIconData = e.target.result;
+        
+        // Show preview
+        const previewImg = document.getElementById('custom-server-icon-img');
+        previewImg.src = customServerIconData;
+        document.getElementById('custom-server-icon-preview').style.display = 'block';
+        
+        // Clear emoji input
+        document.getElementById('server-icon-input').value = '';
+        
+        showNotification('Custom icon ready! Click Create to apply.');
+    };
+    
+    reader.readAsDataURL(file);
+}
+
+function removeCustomServerIcon() {
+    customServerIconData = null;
+    document.getElementById('custom-server-icon-preview').style.display = 'none';
+    showNotification('Custom icon removed');
 }
 
 function selectBanner(bannerType) {
@@ -1682,6 +1875,317 @@ document.addEventListener('input', (e) => {
         e.target.value = value;
     }
 });
+
+// Voice Call Functions
+function joinVoiceChannel() {
+    if (!currentChat || currentChat.type !== 'channel' || currentChat.channel.type !== 'voice') {
+        showNotification('Please select a voice channel first');
+        return;
+    }
+    
+    voiceState.inCall = true;
+    voiceState.channel = currentChat.channel;
+    voiceState.server = currentServer;
+    voiceState.isMuted = false;
+    voiceState.isDeafened = false;
+    
+    // Simulate other participants (demo purposes)
+    voiceState.participants = [
+        { id: currentUser.id, username: currentUser.username, avatar: currentUser.avatar, customAvatar: currentUser.customAvatar, talking: false, self: true }
+    ];
+    
+    // Add random demo participants from server members
+    if (currentServer) {
+        const otherMembers = currentServer.members
+            .filter(memberId => memberId !== currentUser.id)
+            .slice(0, Math.floor(Math.random() * 3) + 1); // 1-3 random members
+        
+        otherMembers.forEach(memberId => {
+            const user = users.find(u => u.id === memberId);
+            if (user) {
+                voiceState.participants.push({
+                    id: user.id,
+                    username: user.username,
+                    avatar: user.avatar,
+                    customAvatar: user.customAvatar,
+                    talking: false,
+                    self: false
+                });
+            }
+        });
+    }
+    
+    // Show voice call popup
+    showVoiceCallPopup();
+    
+    // Start random talking simulation
+    startTalkingSimulation();
+    
+    showNotification('🎤 Connected to voice channel!');
+}
+
+function showVoiceCallPopup() {
+    const popup = document.getElementById('voice-call-popup');
+    
+    // Force reset position
+    popup.style.position = 'fixed';
+    popup.style.left = '20px';
+    popup.style.bottom = '20px';
+    popup.style.top = 'auto';
+    popup.style.right = 'auto';
+    popup.style.transform = 'none';
+    popup.style.display = 'block';
+    popup.style.zIndex = '9999';
+    
+    document.getElementById('voice-channel-name').textContent = voiceState.channel.name;
+    document.getElementById('voice-server-name').textContent = voiceState.server ? voiceState.server.name : 'Direct Call';
+    
+    updateVoiceParticipants();
+    
+    // Make draggable
+    makeVoiceCallDraggable();
+    
+    console.log('Voice popup shown at:', popup.getBoundingClientRect());
+}
+
+function makeVoiceCallDraggable() {
+    const popup = document.getElementById('voice-call-popup');
+    const header = popup.querySelector('.voice-call-header');
+    
+    let isDragging = false;
+    let offsetX = 0;
+    let offsetY = 0;
+    
+    // Reset position to default visible location
+    popup.style.left = '20px';
+    popup.style.bottom = '20px';
+    popup.style.top = 'auto';
+    popup.style.transform = 'none';
+    
+    // Load saved position if valid
+    const savedPos = localStorage.getItem('paperchat_voice_position');
+    if (savedPos) {
+        try {
+            const pos = JSON.parse(savedPos);
+            if (pos.left) popup.style.left = pos.left;
+            if (pos.top) {
+                popup.style.top = pos.top;
+                popup.style.bottom = 'auto';
+            }
+        } catch (e) {
+            // Invalid saved position, use default
+        }
+    }
+    
+    header.addEventListener('mousedown', dragStart);
+    document.addEventListener('mousemove', drag);
+    document.addEventListener('mouseup', dragEnd);
+    
+    function dragStart(e) {
+        if (e.target.closest('.btn-close-voice')) return;
+        
+        isDragging = true;
+        
+        const rect = popup.getBoundingClientRect();
+        offsetX = e.clientX - rect.left;
+        offsetY = e.clientY - rect.top;
+        
+        popup.style.animation = 'none';
+        popup.style.transition = 'none';
+    }
+    
+    function drag(e) {
+        if (!isDragging) return;
+        
+        e.preventDefault();
+        
+        const newLeft = e.clientX - offsetX;
+        const newTop = e.clientY - offsetY;
+        
+        // Keep within viewport bounds
+        const maxLeft = window.innerWidth - popup.offsetWidth;
+        const maxTop = window.innerHeight - popup.offsetHeight;
+        
+        const boundedLeft = Math.max(0, Math.min(newLeft, maxLeft));
+        const boundedTop = Math.max(0, Math.min(newTop, maxTop));
+        
+        popup.style.left = boundedLeft + 'px';
+        popup.style.top = boundedTop + 'px';
+        popup.style.bottom = 'auto';
+        popup.style.transform = 'none';
+    }
+    
+    function dragEnd(e) {
+        if (!isDragging) return;
+        
+        isDragging = false;
+        
+        // Save position
+        const pos = {
+            left: popup.style.left,
+            top: popup.style.top
+        };
+        localStorage.setItem('paperchat_voice_position', JSON.stringify(pos));
+    }
+}
+
+function updateVoiceParticipants() {
+    const container = document.getElementById('voice-participants');
+    container.innerHTML = '';
+    
+    voiceState.participants.forEach(participant => {
+        const participantEl = document.createElement('div');
+        participantEl.className = 'voice-participant';
+        if (participant.talking) {
+            participantEl.classList.add('talking');
+        }
+        
+        const avatarDiv = document.createElement('div');
+        avatarDiv.className = 'voice-participant-avatar';
+        
+        if (participant.customAvatar) {
+            avatarDiv.style.backgroundImage = `url('${participant.customAvatar}')`;
+            avatarDiv.style.backgroundSize = 'cover';
+            avatarDiv.style.backgroundPosition = 'center';
+        } else {
+            avatarDiv.textContent = participant.avatar;
+        }
+        
+        const infoDiv = document.createElement('div');
+        infoDiv.className = 'voice-participant-info';
+        
+        const nameDiv = document.createElement('div');
+        nameDiv.className = 'voice-participant-name';
+        nameDiv.textContent = participant.username + (participant.self ? ' (You)' : '');
+        
+        const statusDiv = document.createElement('div');
+        statusDiv.className = 'voice-participant-status';
+        
+        let statusText = '';
+        if (participant.self) {
+            if (voiceState.isDeafened) {
+                statusText = '🔇 Deafened';
+            } else if (voiceState.isMuted) {
+                statusText = '🔇 Muted';
+            } else if (participant.talking) {
+                statusText = '🎤 Speaking';
+            } else {
+                statusText = '🎤 Connected';
+            }
+        } else {
+            statusText = participant.talking ? '🎤 Speaking' : '🎤 Connected';
+        }
+        
+        statusDiv.textContent = statusText;
+        
+        infoDiv.appendChild(nameDiv);
+        infoDiv.appendChild(statusDiv);
+        
+        participantEl.appendChild(avatarDiv);
+        participantEl.appendChild(infoDiv);
+        
+        container.appendChild(participantEl);
+    });
+}
+
+let talkingInterval;
+
+function startTalkingSimulation() {
+    // Randomly make participants talk
+    talkingInterval = setInterval(() => {
+        if (!voiceState.inCall) {
+            clearInterval(talkingInterval);
+            return;
+        }
+        
+        // Reset all talking states
+        voiceState.participants.forEach(p => p.talking = false);
+        
+        // Randomly select 0-2 participants to be talking
+        const talkingCount = Math.random() < 0.6 ? Math.floor(Math.random() * 2) + 1 : 0;
+        
+        for (let i = 0; i < talkingCount; i++) {
+            const randomIndex = Math.floor(Math.random() * voiceState.participants.length);
+            voiceState.participants[randomIndex].talking = true;
+        }
+        
+        updateVoiceParticipants();
+    }, 1500); // Update every 1.5 seconds
+}
+
+function toggleMute() {
+    voiceState.isMuted = !voiceState.isMuted;
+    
+    const muteBtn = document.getElementById('mute-btn');
+    const muteIcon = document.getElementById('mute-icon');
+    
+    if (voiceState.isMuted) {
+        muteBtn.classList.add('active');
+        muteIcon.textContent = '🔇';
+        showNotification('Microphone muted');
+    } else {
+        muteBtn.classList.remove('active');
+        muteIcon.textContent = '🎤';
+        showNotification('Microphone unmuted');
+    }
+    
+    // If deafened, unmute also undeafens
+    if (voiceState.isDeafened) {
+        voiceState.isDeafened = false;
+        document.getElementById('deafen-btn').classList.remove('active');
+        document.getElementById('deafen-icon').textContent = '🔊';
+    }
+    
+    updateVoiceParticipants();
+}
+
+function toggleDeafen() {
+    voiceState.isDeafened = !voiceState.isDeafened;
+    
+    const deafenBtn = document.getElementById('deafen-btn');
+    const deafenIcon = document.getElementById('deafen-icon');
+    
+    if (voiceState.isDeafened) {
+        deafenBtn.classList.add('active');
+        deafenIcon.textContent = '🔇';
+        // Deafening also mutes
+        voiceState.isMuted = true;
+        document.getElementById('mute-btn').classList.add('active');
+        document.getElementById('mute-icon').textContent = '🔇';
+        showNotification('Deafened');
+    } else {
+        deafenBtn.classList.remove('active');
+        deafenIcon.textContent = '🔊';
+        showNotification('Undeafened');
+    }
+    
+    updateVoiceParticipants();
+}
+
+function leaveVoiceCall() {
+    voiceState.inCall = false;
+    voiceState.channel = null;
+    voiceState.server = null;
+    voiceState.participants = [];
+    voiceState.isMuted = false;
+    voiceState.isDeafened = false;
+    
+    // Clear interval
+    if (talkingInterval) {
+        clearInterval(talkingInterval);
+    }
+    
+    // Hide popup
+    document.getElementById('voice-call-popup').style.display = 'none';
+    
+    // Reset button states
+    document.getElementById('mute-btn').classList.remove('active');
+    document.getElementById('deafen-btn').classList.remove('active');
+    document.getElementById('mute-icon').textContent = '🎤';
+    document.getElementById('deafen-icon').textContent = '🔊';
+    
+    showNotification('Disconnected from voice channel');
+}
 
 // Initialize on load
 window.addEventListener('DOMContentLoaded', init);

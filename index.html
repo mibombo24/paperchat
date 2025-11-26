@@ -182,6 +182,14 @@ b                         <h2>Welcome to PaperChat!</h2>
                 <input type="text" id="server-name-input" placeholder="Server Name" class="input-field">
                 <label>Server Icon (emoji)</label>
                 <input type="text" id="server-icon-input" placeholder="🎮" maxlength="2" class="input-field">
+                <div style="margin-top: 10px;">
+                    <button type="button" onclick="triggerServerIconUpload()" class="btn btn-secondary">📷 Upload Custom Icon</button>
+                    <input type="file" id="server-icon-upload-input" accept="image/*" style="display: none;" onchange="uploadCustomServerIcon(event)">
+                </div>
+                <div id="custom-server-icon-preview" class="custom-banner-preview" style="display: none; margin-top: 10px;">
+                    <img id="custom-server-icon-img" src="" alt="Custom Server Icon" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 2px solid #2c1810;">
+                    <button type="button" onclick="removeCustomServerIcon()" class="btn btn-danger btn-small">Remove Custom Icon</button>
+                </div>
             </div>
             <div class="modal-footer">
                 <button onclick="createServer()" class="btn btn-primary">Create</button>
@@ -262,6 +270,14 @@ b                         <h2>Welcome to PaperChat!</h2>
                 <h4>Change Avatar</h4>
                 <input type="text" id="avatar-input" placeholder="Enter emoji" maxlength="2" class="input-field">
                 <button onclick="updateAvatar()" class="btn btn-secondary">Update Avatar</button>
+                <div style="margin-top: 10px;">
+                    <button onclick="triggerAvatarUpload()" class="btn btn-secondary">📷 Upload Custom Avatar</button>
+                    <input type="file" id="avatar-upload-input" accept="image/*" style="display: none;" onchange="uploadCustomAvatar(event)">
+                </div>
+                <div id="custom-avatar-preview" class="custom-banner-preview" style="display: none; margin-top: 10px;">
+                    <img id="custom-avatar-img" src="" alt="Custom Avatar" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 2px solid #2c1810;">
+                    <button onclick="removeCustomAvatar()" class="btn btn-danger btn-small">Remove Custom Avatar</button>
+                </div>
                 
                 <h4>Custom Status</h4>
                 <input type="text" id="custom-status-input" placeholder="What's on your mind?" class="input-field">
@@ -377,6 +393,34 @@ b                         <h2>Welcome to PaperChat!</h2>
     <div id="friend-requests-container" class="friend-requests-popup" style="display: none;">
         <h4>Friend Requests</h4>
         <div id="friend-requests-list"></div>
+    </div>
+
+    <!-- Voice Call Popup -->
+    <div id="voice-call-popup" class="voice-call-popup" style="display: none;">
+        <div class="voice-call-header">
+            <div class="voice-call-title">
+                <span class="voice-icon">🔊</span>
+                <div>
+                    <div id="voice-channel-name">Voice Channel</div>
+                    <div id="voice-server-name" class="voice-server-name"></div>
+                </div>
+            </div>
+            <button onclick="leaveVoiceCall()" class="btn-close-voice" title="Disconnect">✕</button>
+        </div>
+        <div class="voice-call-body">
+            <div id="voice-participants"></div>
+        </div>
+        <div class="voice-call-controls">
+            <button id="mute-btn" onclick="toggleMute()" class="voice-control-btn" title="Mute/Unmute">
+                <span id="mute-icon">🎤</span>
+            </button>
+            <button id="deafen-btn" onclick="toggleDeafen()" class="voice-control-btn" title="Deafen/Undeafen">
+                <span id="deafen-icon">🔊</span>
+            </button>
+            <button onclick="leaveVoiceCall()" class="voice-control-btn disconnect-btn" title="Disconnect">
+                📞
+            </button>
+        </div>
     </div>
 
     <script src="app.js"></script>
